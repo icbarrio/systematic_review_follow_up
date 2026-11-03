@@ -14,6 +14,7 @@ library(tidyverse)
 library(stringr) 
 library(flextable)    # to make beautiful tables :)
 library(harrypotter)  # colour palette
+library(writexl)      # write out Excel file
 
 
 # customised functions ---------------------------------------------------------
@@ -45,22 +46,104 @@ theme_systrev <- function(){ #create a new theme function for the style of graph
 # clean the environment first
 rm(list=ls())
 
-# set the working directory to the folders where the data files are stored
-setwd("./data")
-
 # in this script we will use the file coded_data.csv (from script 1), which
 # contains coded raw data extracted from studies, as well as the lists of
 # herbivores, herbivore groups and plants (from script 1)
 
-coded_data <- read_csv("coded_data.csv") 
-herbivore_groups <- read_csv("herbivore_groups.csv") 
-new_values_herbivores <- read_csv("new_values_herbivores.csv") 
-new_values_plants <- read_csv("new_values_plants.csv") 
+coded_data <- read_csv("data/coded_data.csv") 
+herbivore_groups <- read_csv("data/herbivore_groups.csv") 
+new_values_herbivores <- read_csv("data/new_values_herbivores.csv") 
+new_values_plants <- read_csv("data/new_values_plants.csv") 
 
 
 # 2. descriptive statistics ----------------------------------------------------
 # for the first part of this section presented in the manuscript (i.e. ROSES 
 # diagram and repeatability of screening) see script 2_screening_process
+
+# checks from older database: 
+# a) how many articles had exclosures?
+# size-selective exclosures have to be treated differently
+exclosure_studies <- coded_data |> 
+  filter(diversity_contrast %in% c("exclosure", "enclosure") &
+           size_selective_exclosures == "no") |> 
+    distinct(article_ID, .keep_all = TRUE) |> 
+  # keep only relevant variables
+  select("article_ID", "author_list", "title", "year", "journal",
+         "diversity_contrast", "diversity_contrast_comments")
+
+size_selective_studies <- coded_data |> 
+  filter(size_selective_exclosures == "yes") |> 
+  distinct(article_ID, contrast, .keep_all = TRUE) |> 
+  # keep only relevant variables
+  select("article_ID", "study_ID", "author_list", "title", "year", "journal",
+         "diversity_contrast", "diversity_contrast_comments")
+
+write_xlsx(list(exclosures = other_studies,
+                size_selective = wetland_studies),
+            "data/exclosures_sysrev.xlsx")
+
+# b) how many studies were conducted in graminoid tundra?
+other_studies <- coded_data |> 
+  filter(habitat_type == "other") |> 
+  distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
+  # keep only relevant variables
+  select("article_ID", "author_list", "title", "year", "journal",
+         "habitat_type", "habitat_type_comments")
+
+wetland_studies <- coded_data |> 
+  filter(habitat_type == "wetland") |> 
+  distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
+  # keep only relevant variables
+  select("article_ID", "author_list", "title", "year", "journal",
+         "habitat_type", "habitat_type_comments")
+
+graminoid_studies <- coded_data |>
+  filter(habitat_type == "graminoid tundra") |> 
+  distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
+  # keep only relevant variables
+  select("article_ID", "author_list", "title", "year", "journal",
+         "habitat_type", "habitat_type_comments")
+
+no_habitat_studies <- coded_data |> 
+  filter(habitat_type == "not reported") |> 
+  distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
+  # keep only relevant variables
+  select("article_ID", "author_list", "title", "year", "journal",
+         "habitat_type", "habitat_type_comments")
+
+erect_studies <- coded_data |> 
+  filter(habitat_type == "erect-shrub tundra (shrubs >40 cm)") |> 
+  distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
+  # keep only relevant variables
+  select("article_ID", "author_list", "title", "year", "journal",
+         "habitat_type", "habitat_type_comments")
+
+prostrate_studies <- coded_data |> 
+  filter(habitat_type == "prostrate-shrub tundra (shrubs <40 cm)") |> 
+  distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
+  # keep only relevant variables
+  select("article_ID", "author_list", "title", "year", "journal",
+         "habitat_type", "habitat_type_comments")
+
+barren_studies <- coded_data |> 
+  filter(habitat_type == "barren") |> 
+  distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
+  # keep only relevant variables
+  select("article_ID", "author_list", "title", "year", "journal",
+         "habitat_type", "habitat_type_comments")
+
+
+write_xlsx(list(other = other_studies,
+                wetland = wetland_studies,
+                graminoid = graminoid_studies,
+                no_habitat = no_habitat_studies,
+                erect_shrub = erect_studies,
+                prostrate_srub = prostrate_studies,
+                barren = barren_studies),
+            "data/habitat_sysrev.xlsx")
+
+
+
 
 # range of publication years for the articles included?
 coded_data %>% summarize(min = min(year), max = max(year)) 
