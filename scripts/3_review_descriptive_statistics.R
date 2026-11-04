@@ -76,11 +76,12 @@ size_selective_studies <- coded_data |>
   distinct(article_ID, contrast, .keep_all = TRUE) |> 
   # keep only relevant variables
   select("article_ID", "study_ID", "author_list", "title", "year", "journal",
-         "diversity_contrast", "diversity_contrast_comments")
+         "contrast", "diversity_contrast_comments")
 
-write_xlsx(list(exclosures = other_studies,
-                size_selective = wetland_studies),
+write_xlsx(list(exclosures = exclosure_studies,
+                size_selective = size_selective_studies),
             "data/exclosures_sysrev.xlsx")
+
 
 # b) how many studies were conducted in graminoid tundra?
 other_studies <- coded_data |> 
@@ -88,49 +89,49 @@ other_studies <- coded_data |>
   distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
   # keep only relevant variables
   select("article_ID", "author_list", "title", "year", "journal",
-         "habitat_type", "habitat_type_comments")
+         "habitat_type", "habitat_type_D", "habitat_type_comments", "soil_moisture")
 
 wetland_studies <- coded_data |> 
   filter(habitat_type == "wetland") |> 
   distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
   # keep only relevant variables
   select("article_ID", "author_list", "title", "year", "journal",
-         "habitat_type", "habitat_type_comments")
+         "habitat_type", "habitat_type_D", "habitat_type_comments", "soil_moisture")
 
 graminoid_studies <- coded_data |>
   filter(habitat_type == "graminoid tundra") |> 
   distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
   # keep only relevant variables
   select("article_ID", "author_list", "title", "year", "journal",
-         "habitat_type", "habitat_type_comments")
+         "habitat_type", "habitat_type_D", "habitat_type_comments", "soil_moisture")
 
 no_habitat_studies <- coded_data |> 
   filter(habitat_type == "not reported") |> 
   distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
   # keep only relevant variables
   select("article_ID", "author_list", "title", "year", "journal",
-         "habitat_type", "habitat_type_comments")
+         "habitat_type", "habitat_type_D", "habitat_type_comments", "soil_moisture")
 
 erect_studies <- coded_data |> 
   filter(habitat_type == "erect-shrub tundra (shrubs >40 cm)") |> 
   distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
   # keep only relevant variables
   select("article_ID", "author_list", "title", "year", "journal",
-         "habitat_type", "habitat_type_comments")
+         "habitat_type", "habitat_type_D", "habitat_type_comments", "soil_moisture")
 
 prostrate_studies <- coded_data |> 
   filter(habitat_type == "prostrate-shrub tundra (shrubs <40 cm)") |> 
   distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
   # keep only relevant variables
   select("article_ID", "author_list", "title", "year", "journal",
-         "habitat_type", "habitat_type_comments")
+         "habitat_type", "habitat_type_D", "habitat_type_comments", "soil_moisture")
 
 barren_studies <- coded_data |> 
   filter(habitat_type == "barren") |> 
   distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
   # keep only relevant variables
   select("article_ID", "author_list", "title", "year", "journal",
-         "habitat_type", "habitat_type_comments")
+         "habitat_type", "habitat_type_D", "habitat_type_comments", "soil_moisture")
 
 
 write_xlsx(list(other = other_studies,
@@ -142,7 +143,7 @@ write_xlsx(list(other = other_studies,
                 barren = barren_studies),
             "data/habitat_sysrev.xlsx")
 
-
+coded_data |> distinct(habitat_type)
 
 
 # range of publication years for the articles included?
