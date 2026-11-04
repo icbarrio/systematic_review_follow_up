@@ -1,37 +1,115 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-#       Systematic review on herbivory diversity in Arctic tundra
-#                 Laura Barbero-Palacios (laura@lbhi.is)
+#                       Systematic review follow-up
 #                    Isabel C Barrio (isabel@lbhi.is)
-#                              6-April-2023
+#                             4-November-2026
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-# script to import the data from the two main databases related 
-# to the systematic review: 
-# 1) database in Additional file 2: contains bibliographic information 
-#    about the articles and the screening process --> overview
-# 2) database in Additional file 3: contains coded raw data extracted from 
-#    studies --> coded data
+# this "follow-up" builds on the systematic review on herbivore diversity
+# in Arctic tundra by Barbero-Palacios et al 2024. The original search included
+# articles until mid 2021, and the search was updated in September 2026.
 
-# in this script we import , clean and rearrange the datasets and save them as csv
+# in this script we load the data and do some checks on the original database,
+# and import, clean and rearrange the updated search. At the end we compile
+# both datasets and save the output as csv.
+
 
 # libraries --------------------------------------------------------------------
 library(readxl)
 library(dplyr)
 library(tidyverse)
 library(stringr)
+library(writexl)      # write out Excel files for checks
 
 
-# 1. load datasets -------------------------------------------------------------
-# set the working directory to the folders where the data files are stored
-setwd("./data")
+# 1. load old dataset ----------------------------------------------------------
+# the old dataset is stored as a single csv file
+coded_data_old <- read_csv("data/old_database/coded_data_OLD.csv") 
 
-## 1.1 overview dataset --------------------------------------------------------
-overview <- read_excel("MASTER_overview_file.xlsx", sheet = "screening") 
-  #there are some warning messages when importing the dataset but it seems fine
-write_excel_csv(overview, file = "overview.csv", col_names = TRUE)
+# for the more recent studies we have included information on exclosure size, 
+# so we need to add this information to the old dataset --> we extract the studies
+# using exclosures/enclosures in the old dataset and fill out manually;
+# size-selective exclosures have to be treated differently
+exclosure_studies <- coded_data_old |> 
+  filter(diversity_contrast %in% c("exclosure", "enclosure") &
+           size_selective_exclosures == "no") |> 
+    distinct(article_ID, .keep_all = TRUE) |> 
+  # keep only relevant variables
+  select("article_ID", "author_list", "title", "year", "journal",
+         "diversity_contrast", "diversity_contrast_comments")
+
+size_selective_studies <- coded_data_old |> 
+  filter(size_selective_exclosures == "yes") |> 
+  distinct(article_ID, contrast, .keep_all = TRUE) |> 
+  # keep only relevant variables
+  select("article_ID", "study_ID", "author_list", "title", "year", "journal",
+         "contrast", "diversity_contrast_comments")
+
+write_xlsx(list(exclosures = exclosure_studies,
+                size_selective = size_selective_studies),
+            "data/exclosures_sysrev.xlsx")
+
+# we also need to check the classification of the habitats in the old dataset
+# as some spot checks during data extraction have pointed out some inconsistencies
+coded_data_old |> distinct(habitat_type)
+# we have 7 possible habitat classes; we extract each class in a separate tab 
+# in an Excel file. We create a function to filter by habitat and keep only relevant cols 
+split_by_habitat <- function(coded_data_old, habitat_class){
+  coded_data_old |> filter(habitat_type == habitat_class) |> 
+    distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
+  # keep only relevant variables
+  select("article_ID", "author_list", "title", "year", "journal",
+         "habitat_type", "habitat_type_D", "habitat_type_comments", "soil_moisture")
+}
+
+other_studies <- split_by_habitat(coded_data_old, "other")
+erect_shrub_studies <- split_by_habitat(coded_data_old, "erect-shrub tundra (shrubs >40 cm)")
+prostrate_shrub_studies <- split_by_habitat(coded_data_old, "prostrate-shrub tundra (shrubs <40 cm)")
+no_habitat_studies <- split_by_habitat(coded_data_old, "not reported")
+wetland_studies <- split_by_habitat(coded_data_old, "wetland")
+graminoid_studies <- split_by_habitat(coded_data_old, "graminoid tundra")
+barren_studies <- split_by_habitat(coded_data_old, "barren")
+
+# write out Excel file for checks
+write_xlsx(list(other = other_studies,
+                wetland = wetland_studies,
+                graminoid = graminoid_studies,
+                no_habitat = no_habitat_studies,
+                erect_shrub = erect_shrub_studies,
+                prostrate_srub = prostrate_shrub_studies,
+                barren = barren_studies),
+            "data/habitat_sysrev.xlsx")
+
+## HERE WE WILL UPDATE/FIX THE OLD DATABASE
 
 
-## 1.2 coded data --------------------------------------------------------------
+# other datasets we may need
+# bibliographic information for the earlier search
+overview_old <- read_csv("data/old_database/overview_OLD.csv") 
+
+
+
+# 2. load new dataset ----------------------------------------------------------
+# as for the older database we have two main databases related 
+# to the systematic review: 
+# 1) database in [Additional file 2]: contains bibliographic information 
+#    about the articles and the screening process --> overview_new
+# 2) database in [Additional file 3]: contains coded raw data extracted from 
+#    studies --> coded_data_new
+
+## 2.1 overview dataset --------------------------------------------------------
+##### TO BE UPDATED: for now this is a temporary copy of the working file
+overview_new <- read_excel("data/updated_lit_search_and_full_article_list.xlsx", 
+                           sheet = "screening") 
+  # there are some warning messages when importing the dataset but it seems fine
+write_excel_csv(overview_new, file = "data/new_database/overview_NEW.csv", col_names = TRUE)
+
+
+
+
+## 2.2 coded data --------------------------------------------------------------
+
+##### TO BE UPDATED: code below is from the original systematic review :)
+
 # load and rearrange the raw data first
 # this takes a while from the excel file, so we will save it later as csv
 # so that it is faster to load
@@ -90,6 +168,7 @@ write_excel_csv(raw.file_t, file = "raw.file_t.csv", col_names=TRUE)
     write_excel_csv(plant_list, file = "plant_list.csv", col_names=FALSE)
     
     
+# these lists with the new values were then saved as separate tabs in the CODING_database.xlsx file
     
 ### 1.2.2 clean and rearrange dataset ------------------------------------------
 # RUN FROM HERE
