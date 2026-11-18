@@ -21,32 +21,44 @@ library(stringr)
 library(writexl)      # write out Excel files for checks
 
 
-# 1. load old dataset ----------------------------------------------------------
+# 1. load and fix old dataset --------------------------------------------------
+## 1.1 overview dataset ----
+# contains bibliographic information for the earlier search that we need to update 
+overview_old_FIXED <- read_csv("data/old_database/overview_OLD.csv") |> 
+  # fix full text score for article_ID 1074 (should be excluded because it is forest)
+  mutate(full_text_score = case_when(ID == 1074 ~ "exclude_population_habitat",
+                                      TRUE ~ full_text_score))
+
+write_excel_csv(overview_old_FIXED, file = "data/overview_old_FIXED.csv", col_names = TRUE)
+
+
+## 1.2 coded data ----
 # the old dataset is stored as a single csv file
 coded_data_old <- read_csv("data/old_database/coded_data_OLD.csv") 
 
+## output data for manual check - DO NOT NEED TO RUN EVERY TIME
 # for the more recent studies we have included information on exclosure size, 
 # so we need to add this information to the old dataset --> we extract the studies
 # using exclosures/enclosures in the old dataset and fill out manually;
 # size-selective exclosures have to be treated differently
-exclosure_studies <- coded_data_old |> 
-  filter(diversity_contrast %in% c("exclosure", "enclosure") &
-           size_selective_exclosures == "no") |> 
-    distinct(article_ID, .keep_all = TRUE) |> 
-  # keep only relevant variables
-  select("article_ID", "author_list", "title", "year", "journal",
-         "diversity_contrast", "diversity_contrast_comments")
-
-size_selective_studies <- coded_data_old |> 
-  filter(size_selective_exclosures == "yes") |> 
-  distinct(article_ID, contrast, .keep_all = TRUE) |> 
-  # keep only relevant variables
-  select("article_ID", "study_ID", "author_list", "title", "year", "journal",
-         "contrast", "diversity_contrast_comments")
-
-write_xlsx(list(exclosures = exclosure_studies,
-                size_selective = size_selective_studies),
-            "data/exclosures_sysrev.xlsx")
+    exclosure_studies <- coded_data_old |> 
+      filter(diversity_contrast %in% c("exclosure", "enclosure") &
+               size_selective_exclosures == "no") |> 
+        distinct(article_ID, .keep_all = TRUE) |> 
+      # keep only relevant variables
+      select("article_ID", "author_list", "title", "year", "journal",
+             "diversity_contrast", "diversity_contrast_comments")
+    
+    size_selective_studies <- coded_data_old |> 
+      filter(size_selective_exclosures == "yes") |> 
+      distinct(article_ID, contrast, .keep_all = TRUE) |> 
+      # keep only relevant variables
+      select("article_ID", "study_ID", "author_list", "title", "year", "journal",
+             "contrast", "diversity_contrast_comments")
+    
+    write_xlsx(list(exclosures = exclosure_studies,
+                    size_selective = size_selective_studies),
+                "data/exclosures_sysrev.xlsx")
 
 # we also need to check the classification of the habitats in the old dataset
 # as some spot checks during data extraction have pointed out some inconsistencies
@@ -79,18 +91,106 @@ write_xlsx(list(other = other_studies,
                 barren = barren_studies),
             "data/habitat_sysrev.xlsx")
 
-## HERE WE WILL UPDATE/FIX THE OLD DATABASE
+## fix the old database
+## add exclosure size data to the old database
+# exclosure size has been manually checked for all studies included in the previous systematic review
+exclosure_size <- read_excel("data/exclosures_sysrev.xlsx", 
+                           sheet = "exclosures") |> 
+  select(article_ID, exclosure_size, exclosure_size_comments, exclosure_area)
+
+exclosure_size_ss <- read_excel("data/exclosures_sysrev.xlsx", 
+                           sheet = "size_selective") |> 
+  select(study_ID, exclosure_size, exclosure_size_comments, exclosure_area)
 
 
-# other datasets we may need
-# bibliographic information for the earlier search
-overview_old <- read_csv("data/old_database/overview_OLD.csv") 
+coded_data_old_FIXED <- coded_data_old |> 
+  ## add EXCLOSURE AREA information (extracted manually for all exclosure studies)
+  # merge info on exclosure size
+  left_join(exclosure_size, by = "article_ID") |> 
+  # merge info on size of size selective exclosures
+  left_join(exclosure_size_ss, by = "study_ID") |> 
+  # merge columns with exclosure size info and remove the original ones
+    mutate(exclosure_size = coalesce(exclosure_size.x, as.character(exclosure_size.y)),
+           exclosure_size_comments = coalesce(exclosure_size_comments.x, exclosure_size_comments.y),
+           exclosure_area = coalesce(exclosure_area.x, as.character(exclosure_area.y))) |> 
+    select(-ends_with(".x"), -ends_with(".y")) |> 
+  # recalculate exclosure area based on lengthxwidth or diameter
+  mutate(exclosure_size = na_if(exclosure_size, "not reported"),
+         exclosure_size = str_to_lower(exclosure_size),
+         exclosure_size = str_replace_all(exclosure_size, "×", "x"),
+         exclosure_size = case_when(exclosure_size == "0.5x05" ~ "0.5x0.5", 
+                                    TRUE ~ exclosure_size),
+         exclosure_size = str_remove(exclosure_size, ";.*"), # keep only smallest value for those reporting two
+         exclosure_area = case_when(exclosure_size_comments == "lengthxwidth" ~ 
+                                          as.numeric(str_extract(exclosure_size, "^[0-9.]+")) *
+                                          as.numeric(str_extract(exclosure_size, "(?<=x)[0-9.]+")),
+                                    exclosure_size_comments == "diameter" ~ pi * (as.numeric(str_extract(exclosure_size, "^[0-9.]+$")) / 2)^2,
+                                          TRUE ~ NA_real_)) |> 
+  ## fix issues with HABITAT TYPES
+  # drop studies conducted in forest
+      filter(!(article_ID == 15 & habitat_type == "other")) |> 
+      filter(!(article_ID %in% c(353, 451) & habitat_type == "other")) |>   # Olofsson studies pooling tundra + forest
+      filter(!(article_ID == 5765 & habitat_type_comments == "subarctic mountain birch forest")) |> 
+      filter(!(article_ID == 1074)) |> 
+  # fix one error
+  mutate (habitat_type_comments = case_when(study_ID == "3577_i" ~ "mesic tundra",
+                                            TRUE ~ habitat_type_comments)) |> 
+  # there were some issues with the habitat classifications in the old database
+  mutate(habitat_corrected = case_when(
+          # fix those that are recorded as "other"
+          habitat_type == "other" & article_ID %in% c(157, 187, 729, 1555) ~ "graminoid tundra",
+          habitat_type == "other" & article_ID %in% c(527, 2329, 2639) ~ "prostrate-shrub tundra (shrubs <40 cm)",
+          habitat_type == "other" & article_ID %in% c(158, 169, 637) ~ "wetland",
+          article_ID == 419 & habitat_type_comments == "Wet moss tundra" ~ "wetland",
+          article_ID == 419 & habitat_type_comments %in% c("Dryasridge", "Cassiopeheath", "Luzulaheath") ~ "prostrate-shrub tundra (shrubs <40 cm)",
+          
+          # fix those that are recorded as "graminoid tundra"
+          article_ID == 2172 & str_detect(measured_response_variable, regex("heath site", ignore_case = TRUE)) ~ "prostrate-shrub tundra (shrubs <40 cm)",
+          habitat_type == "graminoid tundra" & article_ID %in% c(51, 79, 152, 366, 627, 722, 906, 2140, 2574, 5049, 5084, 5832, 5874, 4418) ~ "wetland",
+          article_ID == 4810 & habitat_type_comments == "wet moss area where Poa arctica was abundant" ~ "wetland",
+          article_ID == 5845 & measured_response_comments == "site 3" ~ "wetland",
+          habitat_type == "graminoid tundra" & article_ID %in% c(267, 380, 621, 868, 1604, 2301, 2460, 5848, 5852) ~ "prostrate-shrub tundra (shrubs <40 cm)",
+          article_ID %in% c(5321, 5757) & habitat_type_comments == "wet habitat" ~ "wetland",
+          article_ID %in% c(5321, 5757) & str_detect(habitat_type_comments, regex("mesic", ignore_case = TRUE)) ~ "prostrate-shrub tundra (shrubs <40 cm)",
+          article_ID == 367 & habitat_type_comments == "wet site" ~ "wetland",
+          article_ID == 367 & habitat_type_comments == "mesic and wet site" ~ "other",
+          article_ID == 1412 & habitat_type_comments == "Luzula heath" ~ "prostrate-shrub tundra (shrubs <40 cm)",
+          
+          # fix those that are recorded as "not reported"
+          habitat_type == "not reported" & article_ID %in% c(924, 5851) ~ "prostrate-shrub tundra (shrubs <40 cm)",
+                    
+          # fix those that are recorded as "erect-shrub tundra"
+          habitat_type == "erect-shrub tundra (shrubs >40 cm)" & article_ID %in% c(75, 1462) ~ "graminoid tundra",
+          article_ID == 3577 & habitat_type_comments == "forb tundra" ~ "graminoid tundra",
+          article_ID == 3577 & habitat_type_comments == "mesic tundra" ~ "prostrate-shrub tundra (shrubs <40 cm)",
+          habitat_type == "erect-shrub tundra (shrubs >40 cm)" & article_ID %in% c(451, 511, 1242) ~ "prostrate-shrub tundra (shrubs <40 cm)",
+          
+          # fix those that are recorded as "prostrate-shrub tundra"
+          article_ID == 110 & habitat_type_comments == "wet moss tundra" ~ "wetland",
+          habitat_type == "prostrate-shrub tundra (shrubs <40 cm)" & article_ID %in% c(258) ~ "wetland",
+          habitat_type == "prostrate-shrub tundra (shrubs <40 cm)" & article_ID %in% c(5506) ~ "erect-shrub tundra (shrubs >40 cm)",
+          habitat_type == "prostrate-shrub tundra (shrubs <40 cm)" & article_ID %in% c(1462) ~ "graminoid tundra", # snowbed dominated by graminoids
+          habitat_type == "prostrate-shrub tundra (shrubs <40 cm)" & article_ID %in% c(3258) ~ "other", # combining two habitat types
+          article_ID == 3577 & habitat_type_comments == "willow meadow" ~ "erect-shrub tundra (shrubs >40 cm)",
+          article_ID == 5816 & habitat_type_comments == "dry esker" ~ "barren",
+          
+          # fix those that are recorded as "barren"
+          article_ID == 959 & habitat_type == "barren" ~ "prostrate-shrub tundra (shrubs <40 cm)",
+              TRUE ~ habitat_type)) |> 
+  ## remove columns we are not including in the updated database (e.g. bias, variables extracted from layers)
+  select(-contains("bias_risk"), -contains("overall_criterion"),
+         -"permafrost_D", -"habitat_type_D", -"extent_of_recent_change", -"recent_greening",
+         -"recent_warming", -"productivity", -"soil_type_D", -"bioclimatic_zone", -"distance_from_coast",
+         -"growing_season", - "precipitation", -"temperature", -"distance_to_treeline", -"elevation_DEM")
+
+write_excel_csv(coded_data_old_FIXED, file = "data/coded_data_old_FIXED.csv", col_names = TRUE)
+
 
 
 
 # 2. load new dataset ----------------------------------------------------------
-# as for the older database we have two main databases related 
-# to the systematic review: 
+# as for the older database we have two main databases 
+# related to the systematic review: 
 # 1) database in [Additional file 2]: contains bibliographic information 
 #    about the articles and the screening process --> overview_new
 # 2) database in [Additional file 3]: contains coded raw data extracted from 
@@ -113,17 +213,22 @@ write_excel_csv(overview_new, file = "data/new_database/overview_NEW.csv", col_n
 # load and rearrange the raw data first
 # this takes a while from the excel file, so we will save it later as csv
 # so that it is faster to load
-raw.file   <- read_excel("CODING_database.xlsx", sheet = "CODING_all") %>% 
+raw.file   <- read_excel("data/coding_template_khb.xlsx", sheet = "CODING_template") |> 
                 # remove columns that we do not need
-                select (-"topic", -"variable description", -"type", -"source")
+                select (-"Topic", -"Variable description", -"Type", -"Source") 
+raw.file_icb <- read_excel("data/coding_template_khb.xlsx", sheet = "CODING_template") |> 
+                # remove columns that we do not need
+                select (-"Topic", -"Variable description", -"Type", -"Source") 
+raw.file <- raw.file |> left_join(raw.file_icb, by = "Coding variable")
+
 # we have each study in a separate column so we want to transpose the datasheet
 raw.file_t = as_tibble(t(raw.file), rownames = "row_names") 
-  raw.file_t[,1] <- raw.file_t[, 8]       # study_ID as first column
+  raw.file_t[, 1] <- raw.file_t[, 8]       # study_ID as first column
   colnames(raw.file_t) <- raw.file_t[1,]  # our variable names are in the first row
   raw.file_t <- raw.file_t[-1,-8]         # remove first row and repeated column (study_ID)
-  # the file should contain 3713 obs of 99 variables
+  # ICB: file should contain 2246 obs of 82 variables
 
-write_excel_csv(raw.file_t, file = "raw.file_t.csv", col_names=TRUE)
+write_excel_csv(raw.file_t, file = "data/new_database/raw.file_t.csv", col_names = TRUE)
 
 # alternatively, just load the csv file
 # raw.file_t <- read_csv("raw.file_t.csv")
@@ -160,6 +265,9 @@ write_excel_csv(raw.file_t, file = "raw.file_t.csv", col_names=TRUE)
     ## plant data
     # we want to get a list of unique values of plant species or groups identified
     # in the studies to assign to larger groups. Get a unique list of plant names:
+    
+    ## CHECK!!
+    
     plant_list <- read_excel("CODING_database.xlsx", sheet = "outcomes") %>% 
                     filter(variable.group == "plant_abundance") %>% 
                       mutate(name_target = ifelse(name.target == "NA", "community", name.target)) %>% 
