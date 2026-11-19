@@ -1,0 +1,12 @@
+eco_response,formula,model_call,LRT,pval,BIC,AIC,AICc,deltaAICc,row_number
+plant_CN_ratio,yi_smd ~ change_f + exclusion + spatial_resolution -1,builds/models/variable_models_M/plant_CN_ratio.rds,13.287468249915,0.00995333227994373,132.508837611996,121.621401181571,125.769549329719,-1.91351365015396,1
+plant_abundance_bryophytes,yi_smd ~ exclusion -1,builds/models/variable_models_M/plant_abundance_bryophytes.rds,4.0921281279787,0.0430833637960936,407.438667164711,396.38997142552,396.747114282663,-1.94737465136683,2
+plant_abundance_dwarf_shrubs,"yi_smd ~ herb_fgr_change + exclusion + 
+                                      spatial_resolution -1",builds/models/variable_models_M/plant_abundance_dwarf_shrubs.rds,19.1996331764611,0.00176429649155391,640.677367902115,614.093288069008,614.827981946559,-8.58434228398471,3
+plant_abundance_graminoids,yi_smd ~ change_f -1,builds/models/variable_models_M/plant_abundance_graminoids.rds,10.0097722263474,0.0402633914687238,926.72799327715,902.363520813756,902.846279434446,-1.62870852091214,4
+plant_abundance_lichens,yi_smd ~ change_f + exclusion -1,builds/models/variable_models_M/plant_abundance_lichens.rds,9.14277131484494,0.0576282798071631,497.357301436846,476.282854378172,477.071586772539,-0.51842248212256,5
+plant_abundance_tall_shrubs,yi_smd ~ error_type -1,builds/models/variable_models_M/plant_abundance_tall_shrubs.rds,7.99761881590098,0.0460609432283622,141.883502558403,130.656296492956,132.70507698076,-0.49429287355062,6
+plant_fitness,yi_smd ~ error_type -1,builds/models/variable_models_M/plant_fitness.rds,5.17582985158592,0.0229032291793455,287.556529095342,278.858980015759,279.525646682426,-2.90260580787009,7
+plant_height,yi_smd ~ change_f + error_type + study_length -1,builds/models/variable_models_M/plant_height.rds,33.4947785500738,2.14084758882988e-05,285.011332221933,258.959630362053,261.431540474412,-17.2728684377142,8
+plant_species_richness,yi_smd ~ habitat_corrected -1,builds/models/variable_models_M/plant_species_richness.rds,11.060062076253,0.0258972280347214,132.28517392,116.156718267571,117.853687964541,-1.70594952214046,9
+plant_structure,yi_smd ~ year.c,builds/models/variable_models_M/plant_structure.rds,5.98843104413226,0.0144000048571461,370.856463248616,360.557619334603,360.992401943298,-3.81171295156565,10
