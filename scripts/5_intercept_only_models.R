@@ -54,9 +54,9 @@ theme_systrev <- function(){ #create a new theme function for the style of graph
 }
 
 # colour palette (we will use these colours later)
-hp(n = 15, house = "Ravenclaw")[1] # colour for negative effects
-hp(n = 15, house = "Ravenclaw")[9] # #B3B8B3FF colour for non-significant
-hp(n = 15, house = "Ravenclaw")[15] # colour for positive effects
+hp(n = 15, option = "Ravenclaw")[1] # colour for negative effects
+hp(n = 15, option = "Ravenclaw")[9] # #B3B8B3FF colour for non-significant
+hp(n = 15, option = "Ravenclaw")[15] # colour for positive effects
 
  
 # load data --------------------------------------------------------------------
@@ -82,10 +82,10 @@ dt <- fread("effect_sizes/data_with_effect_sizes.csv")
 # - included because outcome variable was reported by at least 5 or 10 articles
 
 # nr of articles with no effect size
-dt %>% filter(is.na(yi_smd)) %>% summarize(n = n()) # 287 studies
+dt %>% filter(is.na(yi_smd)) %>% summarize(n = n()) # 287 studies (285)
 
 # nr of articles with no herbivore diversity contrast
-dt %>% filter(change_f == "zero") %>% summarize(n = n()) # 133 studies
+dt %>% filter(change_f == "zero") %>% summarize(n = n()) # 133 studies (123)
 
 # clean up a bit
 dt_f <- dt %>% filter(!is.na(yi_smd)) %>%   # remove missing values (286 studies) 
@@ -95,9 +95,9 @@ dt_f <- dt %>% filter(!is.na(yi_smd)) %>%   # remove missing values (286 studies
             filter(yi_smd > quantile(dt$yi_smd, .005, na.rm = TRUE) & 
                    yi_smd < quantile(dt$yi_smd, .995, na.rm = TRUE)) %>% 
             # make sure article_ID is character
-            mutate(article_ID = as.character(article_ID)) # dt_f has 3263 observations
+            mutate(article_ID = as.character(article_ID)) # dt_f has 3263 observations (3256)
 
-length(dt$study_ID) - length(dt_f$study_ID) # excluding 450 studies so far
+length(dt$study_ID) - length(dt_f$study_ID) # excluding 450 (438) studies so far
 
 # count the number of articles/studies for each response variable
 resp_var_f <- dt_f %>% group_by(var_class, MA.value, article_ID) %>% 
@@ -108,16 +108,16 @@ resp_var_f <- dt_f %>% group_by(var_class, MA.value, article_ID) %>%
 
 # list of studies measuring responses with more than 5 or 10 articles  
 var_5_f <- dt_f %>% filter(MA.value %in% subset(resp_var_f, nr_articles >= 5)$MA.value) %>% 
-  select(study_ID) %>% mutate(MA.5 = "included (5 articles)") # 2846 studies
+  select(study_ID) %>% mutate(MA.5 = "included (5 articles)") # 2846 studies (2833)
 var_10_f <- dt_f %>% filter(MA.value %in% subset(resp_var_f, nr_articles >= 10)$MA.value) %>% 
-  select(study_ID) %>% mutate(MA.10 = "included (10 articles)") # 2232 studies
+  select(study_ID) %>% mutate(MA.10 = "included (10 articles)") # 2232 studies (2221)
 length(var_5_f$study_ID) - length(var_10_f$study_ID) 
-    # 614 excluded studies from meta-regressions because the outcome was reported
+    # 614 (612) excluded studies from meta-regressions because the outcome was reported
     # by less than 10 articles
 
 # nr of excluded studies because they were reported by less than five articles
 dt_f %>% filter(MA.value %in% subset(resp_var_f, nr_articles < 5)$MA.value) %>% 
-  summarize(n = n()) # 417 studies
+  summarize(n = n()) # 417 studies (423)
 
 # nr of studies excluded from quantitative synthesis
 length(dt$study_ID) - length(var_5_f$study_ID)
@@ -162,7 +162,7 @@ length(subset(outcome.vars, nr_articles == 1)$MA.value) # 23 variables were repo
 ### Figure 4 -------------------------------------------------------------------
 # plot the number of articles for each outcome variable reported by > 5 articles
 # define our colour palette 
-pal <- hp(n = 8, house = "Ravenclaw")
+pal <- hp(n = 8, option = "Ravenclaw")
 # link factor names to the colours 
 names(pal) <- c("ecosystem", "disease", "fungal", "invertebrate", "microbial", "soil", "herbivory", "plant")
 
@@ -183,7 +183,6 @@ fig4 <- ggplot(outcome.vars[outcome.vars$nr_articles > 4,]) +
 
 # save the figure to a separate file
 # set the working directory to the main data folder
-setwd("./data")
 ggsave(fig4, file = "figures/Fig4.png", dpi = 600)
 
 
@@ -253,7 +252,7 @@ dt_5_f %>% filter(size_selective_exclosures == "yes") %>%
               group_by(article_ID) %>% 
                     summarize(ns = n()) %>%
               ungroup() %>% summarize(nr_articles = n(), nr_studies = sum(ns)) 
-# 13 articles, 496 studies
+# 13 articles, 496 studies (12/480)
 
 
 ## 2.1 create model guide ------------------------------------------------------
@@ -495,11 +494,15 @@ ggsave(fig5, file = "figures/Fig5.png", dpi = 600)
 
 
 # 4. herbivore diversity or herbivore exclusion? ------------------------------
+
+## NOT RUN FOR FIXED OLD DATABASE
+
 # this is a nice plot for the intercept-only models
 # however, since in many studies the contrast in herbivore diversity is given
 # by exclusion of herbivores, these effects may simply reflect effect of herbivores
 dt_5_f %>% filter(herbivore_fgr_ID_lower_diversity == "zero") %>% summarize(n = n())
 (2337/2846)*100 # 82.1% of studies have zero as lower diversity!
+(2327/2833)*100 # 82.14%
 
 # we can run the analyses again, but for studies not comparing to zero herbivores
 dt_f0 <- dt_f %>% # remove studies where low diversity is zero

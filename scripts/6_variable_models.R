@@ -114,28 +114,30 @@ dt_f <- dt %>% filter(!is.na(yi_smd)) %>%   # remove missing values (287 studies
             mutate(article_ID = as.character(article_ID), # make sure article_ID is character
                    # define study length
                    study_length = suppressWarnings(as.numeric(year_end))- 
-                                   suppressWarnings(as.numeric(year_start)),
+                                   suppressWarnings(as.numeric(year_start))) |> 
                    # re-code permafrost into an ordinal variable
-                   permafrost_ord = case_when(permafrost_D %in% c(1, 5) ~ 4,         # continuous
-                                              permafrost_D %in% c(2, 6, 14, 18) ~ 3, # discontinuous
-                                              permafrost_D %in% c(3, 7, 11, 15) ~ 2, # sporadic
-                                              permafrost_D %in% c(4, 16) ~ 1)) %>%   # isolated patches 
+                   # permafrost_ord = case_when(permafrost_D %in% c(1, 5) ~ 4,         # continuous
+                   #                            permafrost_D %in% c(2, 6, 14, 18) ~ 3, # discontinuous
+                   #                            permafrost_D %in% c(3, 7, 11, 15) ~ 2, # sporadic
+                   #                            permafrost_D %in% c(4, 16) ~ 1)) %>%   # isolated patches 
             # select relevant columns
             select("article_ID", "study_ID", 
                    "herbivore_fgr_ID_higher_diversity", "herbivore_fgr_ID_lower_diversity",
                    "herbivore_fgr_nr_high", "herbivore_fgr_nr_low", "change_f", "change.long_f",
                    "var_class", "MA.value", "outcome_type", 
                    # include potential moderators
-                   "overall_criterion", "error_type", "spatial_resolution", "year",
+                   # "overall_criterion", 
+                   "error_type", "spatial_resolution", "year",
                    "sample_size_higher_diversity", "sample_size_lower_diversity", "study_length",
                    # include environmental context
-                   "permafrost_ord", "habitat_type_D", "extent_of_recent_change", "recent_greening", 
-                   "recent_warming", "productivity", "soil_type_D", "bioclimatic_zone", 
-                   "distance_from_coast", "growing_season", "precipitation", "temperature",
-                   "distance_to_treeline", "elevation_DEM", "soil_chemistry", "soil_texture",
-                   "soil_moisture", `soil_type `, "permafrost", "habitat_type",
+                   #"permafrost_ord", "habitat_type_D", "extent_of_recent_change", "recent_greening", 
+                   #"recent_warming", "productivity", "soil_type_D", "bioclimatic_zone", 
+                   #"distance_from_coast", "growing_season", "precipitation", "temperature",
+                   #"distance_to_treeline", "elevation_DEM", "soil_chemistry", "soil_texture",
+                   #"soil_moisture", `soil_type `, "permafrost", 
+                   "habitat_corrected",
                    "yi_smd", "vi_smd") %>% 
-            rename(soil_type = `soil_type `) %>% 
+            #rename(soil_type = `soil_type `) %>% 
             # create a variable for "exclusion studies" (lower diversity = zero)
             mutate(exclusion = ifelse(herbivore_fgr_ID_lower_diversity == "zero", "complete", "partial")) %>% 
             # calculate numerical variable for the change in herbivore group richness
@@ -161,31 +163,32 @@ dt_10_f <- dt_f %>% filter(MA.value %in% subset(resp_var_f, nr_articles >= 10)$M
 
 # check correlations between environmental variables that 
 # we want to consider as moderators
-moderators <- dt_10_f %>% 
-                # we make our bioclimatic_zone variable numeric
-                mutate(bioclim_z = as.numeric(unclass(as.factor(bioclimatic_zone)))) %>% 
-                select("elevation_DEM", "distance_to_treeline", "distance_from_coast", 
-                       "bioclim_z", "temperature", "precipitation", "growing_season", 
-                       "productivity", "recent_warming", "recent_greening",  
-                       "extent_of_recent_change","permafrost_ord")
-summary(moderators)
-
-ggcorrplot(cor(moderators, use = "complete.obs"), 
-           hc.order = TRUE, outline.col = "white", type = "upper", lab = TRUE)
+# moderators <- dt_10_f %>% 
+#                 # we make our bioclimatic_zone variable numeric
+#                 mutate(bioclim_z = as.numeric(unclass(as.factor(bioclimatic_zone)))) %>% 
+#                 select("elevation_DEM", "distance_to_treeline", "distance_from_coast", 
+#                        "bioclim_z", "temperature", "precipitation", "growing_season", 
+#                        "productivity", "recent_warming", "recent_greening",  
+#                        "extent_of_recent_change","permafrost_ord")
+# summary(moderators)
+# 
+# ggcorrplot(cor(moderators, use = "complete.obs"), 
+#            hc.order = TRUE, outline.col = "white", type = "upper", lab = TRUE)
 # recent_greening and extent of recent change are strongly correlated (0.93) --> 
 # we keep recent_greening; productivity, temperature, growing season and bioclimatic 
 # zone are also correlated --> we keep temperature (less NAs)
 
 # categorical moderators
-dt_10_f %>%  group_by(soil_chemistry) %>% summarize(n = n()) # there are a lot of missing values
-dt_10_f %>%  group_by(soil_texture) %>% summarize(n = n()) # there are a lot of missing values
-dt_10_f %>%  group_by(soil_moisture) %>% summarize(n = n()) # there are a lot of missing values
-dt_10_f %>%  group_by(soil_type) %>% summarize(n = n()) %>% print(n = Inf) # there are a lot of missing values
-dt_10_f %>%  group_by(soil_type_D) %>% summarize(n = n()) # we can include this :)
-  ggplot(dt_10_f) + geom_boxplot(aes(soil_type_D, permafrost_ord), na.rm = T)
-dt_10_f %>%  group_by(permafrost) %>% summarize(n = n()) # there are a lot of missing values
-dt_10_f %>%  group_by(habitat_type) %>% summarize(n = n()) # we can include this :)
-dt_10_f %>%  group_by(habitat_type_D) %>% summarize(n = n()) # there are a lot of missing values
+# dt_10_f %>%  group_by(soil_chemistry) %>% summarize(n = n()) # there are a lot of missing values
+# dt_10_f %>%  group_by(soil_texture) %>% summarize(n = n()) # there are a lot of missing values
+# dt_10_f %>%  group_by(soil_moisture) %>% summarize(n = n()) # there are a lot of missing values
+# dt_10_f %>%  group_by(soil_type) %>% summarize(n = n()) %>% print(n = Inf) # there are a lot of missing values
+# dt_10_f %>%  group_by(soil_type_D) %>% summarize(n = n()) # we can include this :)
+#   ggplot(dt_10_f) + geom_boxplot(aes(soil_type_D, permafrost_ord), na.rm = T)
+# dt_10_f %>%  group_by(permafrost) %>% summarize(n = n()) # there are a lot of missing values
+#dt_10_f %>%  group_by(habitat_type_D) %>% summarize(n = n()) # there are a lot of missing values
+
+dt_10_f %>%  group_by(habitat_corrected) %>% summarize(n = n()) # we can include this :)
 
 
 
@@ -194,12 +197,13 @@ model_guide <- CJ(eco_response = unique(dt_10_f$MA.value),
                   # define the list of variables that we want to include as moderators
                   # for categorical variables -1 removes intercept from model, which makes interpretation easier
                   variable = c("change_f -1", "herb_fgr_change",
-                               "ess.se", "year.c", "study_length", "overall_criterion -1", 
+                               "ess.se", "year.c", "study_length", 
                                "error_type -1", "spatial_resolution -1", "exclusion -1",
-                               "permafrost_ord", "recent_greening", 
-                               "recent_warming", "soil_type_D -1", "distance_from_coast", 
-                               "precipitation", "temperature", "distance_to_treeline", 
-                               "elevation_DEM", "habitat_type -1")) %>% 
+                                "habitat_corrected -1"
+                               # "overall_criterion -1", "permafrost_ord", "recent_greening", 
+                               # "recent_warming", "soil_type_D -1", "distance_from_coast", 
+                               # "precipitation", "temperature", "distance_to_treeline", "elevation_DEM"
+                               )) %>% 
                 # create 'selection' formula (tells the loop which MA.value to take)
                 # and create formula for model
                 mutate(select = paste0("MA.value == ", "'" , eco_response, "'"),
@@ -303,7 +307,7 @@ model.results <- model.results[!is.na(model.results$eco_response)]
 model.results$row_number <- c(1:nrow(model.results)) 
 
 sig <- model.results[pval < 0.05,] # note that this is the anova/likelihood ratio test
-sig # these are the models where adding the variable improved the model (31)
+sig # these are the models where adding the variable improved the model (31) (18)
 
 fwrite(model.results, "builds/model_results/variable_model_results.csv")
 
@@ -326,21 +330,21 @@ model_guide_multi <- CJ(eco_response = unique(sig$eco_response)) %>%
                 # and create formula for model (we do it manually...)
                 mutate(select = paste0("MA.value == ", "'" , eco_response, "'"),
                        formula = c("yi_smd ~ change_f + exclusion + spatial_resolution -1",  # plant CN ratio
-                                   "yi_smd ~ overall_criterion -1",                          # plant C content
+                                   # "yi_smd ~ overall_criterion -1",                          # plant C content
                                    "yi_smd ~ exclusion -1",                                  # bryophyte abundance
                                    "yi_smd ~ herb_fgr_change + exclusion + 
                                       spatial_resolution -1",                                # dwarf shrub abundance
                                    "yi_smd ~ change_f -1",                                   # graminoid abundance
-                                   "yi_smd ~ change_f -1",                                   # lichen abundance
+                                   "yi_smd ~ change_f + exclusion -1",                                   # lichen abundance (added exclusion)
                                    "yi_smd ~ error_type -1",                                 # tall shrub abundance
-                                   "yi_smd ~ distance_to_treeline + habitat_type -1",        # plant diversity
+                                   # "yi_smd ~ distance_to_treeline + habitat_type -1",        # plant diversity
                                    "yi_smd ~ error_type -1",                                 # plant fitness
-                                   "yi_smd ~ change_f + error_type + exclusion + 
-                                      habitat_type + overall_criterion + study_length -1",   # plant height
-                                   "yi_smd ~ permafrost_ord + recent_warming + temperature", # plant productivity
-                                   "yi_smd ~ year.c",                                        # plant structure
-                                   "yi_smd ~ error_type -1",                                 # soil C labile
-                                   "yi_smd ~ error_type + year.c -1"))                       # soil moisture
+                                   "yi_smd ~ change_f + error_type + study_length -1",   # plant height (removed several vars)
+                                   "yi_smd ~ ess.se", # plant productivity
+                                   "yi_smd ~ habitat_corrected -1", # plant species richness (new)
+                                   "yi_smd ~ year.c"))                                        # plant structure
+                                   #"yi_smd ~ error_type -1",                                 # soil C labile
+                                   #"yi_smd ~ error_type + year.c -1"))                       # soil moisture
 set.seed(161)
 
 # create empty data tables to store outputs
@@ -421,7 +425,7 @@ model.results.M$row_number <- c(1:nrow(model.results.M))
 
 sig_multi <- model.results.M[pval < 0.05,] # note that this is the anova/likelihood ratio test
 sig_multi # these are the models where the multi-moderator models were significantly better
-          # than the intercept-only models -- all of them :)
+          # than the intercept-only models -- all of them :) (9 of them)
 
 fwrite(model.results.M, "builds/model_results/variable_model_M_results.csv")
 
@@ -470,8 +474,8 @@ m <- rma.mv(yi_smd ~ change_f + exclusion -1, # model with the variables for whi
 # we have to keep the values of the other moderator constant. In the case
 # of categorical moderators, to calculate predictions across levels 
 # we need to take into account the proportion of observations in each level
-data %>% group_by(change_f) %>% summarize(n = n()/length(data$habitat_type))
-data %>% group_by(exclusion) %>% summarize(n = n()/length(data$habitat_type))
+data %>% group_by(change_f) %>% summarize(n = n()/length(data$habitat_type)) # ?
+data %>% group_by(exclusion) %>% summarize(n = n()/length(data$habitat_type)) # ?
 
 newgrid <- CJ(change_f = unique(data$change_f), 
               exclusion = unique(factor(data$exclusion))) 
@@ -603,112 +607,24 @@ exclusion_plantCN <- ggplot() +
 print(exclusion_plantCN) # print plot to screen
 
 
-
-## 3.2 plant C content ---------------------------------------------------------
-m <- model_list[["plant_C_content"]]
-  summary(m) # overall_criterion has a significant effect
-data <- dt_10_f[MA.value == "plant_C_content", ]
-
-#### bias ----------------------------------------------------------------------
-newgrid <- CJ(overall_criterion = unique(data$overall_criterion)) 
-  pred1 <- rma_predictions(m, newgrid)
-    # add significance direction 
-    pred1[ci.lb > 0 & pred > 0, sig := "Positive effect"]
-    pred1[ci.ub < 0 & pred < 0, sig := "Negative effect"]
-    pred1[ci.ub > 0.05 & ci.lb < 0, sig := "Non-significant"]
-
-# create data table for sample sizes (for categorical moderators only)
-sample_sizes <- data %>% group_by(overall_criterion, article_ID) %>% 
-                              summarize(ns = n()) %>% group_by(overall_criterion) %>% 
-                                summarize(nr_articles = n(), nr_studies = sum(ns)) %>% 
-                  # create a variable with nr of articles and studies for plotting
-                  mutate(sample_size = paste(nr_articles, "(", nr_studies, ")", sep=""))
-# plot the figure
-bias_plantC <- ggplot() +
-              geom_jitter(data = subset(data, abs(yi_smd) < 20), # this is all data
-                          aes(x = factor(overall_criterion, 
-                                         levels = c("Overall low risk of bias", 
-                                                    "Overall medium risk of bias", 
-                                                    "Overall high risk of bias")),  
-                              y = yi_smd, size = 1/vi_smd, fill = yi_smd), 
-                          shape = 21, colour= "lightgrey", stroke = 0, width = 0.1, alpha = 0.9) +
-              # relabel categories on x-axis
-              scale_x_discrete(labels = c("Overall low risk of bias" = "low", 
-                                          "Overall medium risk of bias" = "medium",
-                                          "Overall high risk of bias" = "high")) +
-              scale_fill_gradient2(name = "effect size",
-                                   low = "#006699FF", mid = "#B3B8B3FF", high = "#B35900FF",
-                  midpoint = 0, space = "Lab") +
-              geom_hline(yintercept = 0, linetype = "dashed") +
-              # add the model results
-              new_scale_fill() +
-              # add prediction intervals
-              geom_linerange(data = pred1, aes(y = pred, ymin = pi.lb, ymax = pi.ub, 
-                                               x = overall_criterion)) +
-              # add predicted effect sizes and confidence intervals
-              geom_pointrange(data = pred1, aes(y = pred, ymin = ci.lb, ymax = ci.ub, 
-                                                x = overall_criterion, fill = sig),
-                              shape = 21, size = 1, linewidth = 1.2, stroke = 0.5) +
-              scale_fill_manual(NULL, #name = "Effect size",
-                                values = c("Negative effect" = "#006699FF", 
-                                           "Non-significant" = "#B3B8B3FF",
-                                           "Positive effect" = "#B35900FF")) +
-              labs(title = "Plant C content", x = "Overall risk of bias", 
-                   y = "Effect size (Hedges g)", fill = "Effect size") +
-              ylim(-6, 6) +
-              guides(size = FALSE) +
-              geom_text(data = sample_sizes, # indicate number of articles(studies)
-                        aes(x = overall_criterion, y = -6, label = sample_size),
-                        size = 3, color = "grey10") +
-              theme_systrev() + 
-                theme(legend.position = "none") 
-print(bias_plantC) # print plot to screen
-
-## model without influential study
-data2 <- dt_10_f[MA.value == "plant_C_content", ] %>% filter(!study_ID == "200_c")
-m2 <- rma.mv(yi_smd ~ overall_criterion -1, # model with the variables for which we want to test the effect
-                 # add variance covariance matrix to account for statistical non-independence
-                 V = vcalc(vi = vi_smd, # sampling variances that are correlated with each within the same study;
-                           cluster = article_ID,  # study identity - clustering variable;
-                           obs = study_ID, # different effect sizes corresponding to the same response/dependent variable
-                           data = data2, 
-                           rho = 0.5), 
-                 random = list(~ 1 | article_ID / study_ID), 
-                 data = data2, 
-                 method = "ML",  test = "t", dfs = "contain") 
-  summary(m2) # overall_criterion no longer has a significant effect
-
-# compare to intercept-only model to assess significance of overall_criterion  
-m0b <- rma.mv(yi_smd ~ 1, # intercept only model
-                 # add variance covariance matrix to account for statistical non-independence
-                 V = vcalc(vi = vi_smd, # sampling variances that are correlated with each within the same study;
-                           cluster = article_ID,  # study identity - clustering variable;
-                           obs = study_ID, # different effect sizes corresponding to the same response/dependent variable
-                           data = data2, 
-                           rho = 0.5), 
-                 random = list(~ 1 | article_ID / study_ID),
-                 data = data2, 
-                 method = "ML",  test = "t", dfs = "contain") 
-anova(m0b, m2) 
-  
   
 
 
-## 3.3 bryophyte abundance -----------------------------------------------------
+## 3.2 bryophyte abundance -----------------------------------------------------
 m <- model_list[["plant_abundance_bryophytes"]]
   summary(m) # exclusion did NOT have a significant effect
 data <- dt_10_f[MA.value == "plant_abundance_bryophytes", ]
 
 
 
-## 3.4 dwarf shrub abundance ---------------------------------------------------
+## 3.3 dwarf shrub abundance ---------------------------------------------------
 m <- model_list[["plant_abundance_dwarf_shrubs"]]
   summary(m) # none of the moderators had a significant effect
 data <- dt_10_f[MA.value == "plant_abundance_dwarf_shrubs", ]
 
 
 
-## 3.5 graminoid abundance -----------------------------------------------------
+## 3.4 graminoid abundance -----------------------------------------------------
 m <- model_list[["plant_abundance_graminoids"]]
   summary(m) # change_f has a significant effect
 data <- dt_10_f[MA.value == "plant_abundance_graminoids", ]
@@ -1273,6 +1189,59 @@ print(error_plantheight) # print plot to screen
 m <- model_list[["plant_productivity"]]
   summary(m) # none of the variables had a significant effect
 
+
+## 3.12* plant species richness ----------------------------------------------------
+m <- model_list[["plant_species_richness"]]
+  summary(m) # habitat_corrected has a significant effect
+data <- dt_10_f[MA.value == "plant_species_richness", ]
+
+#### habitat type ----------------------------------------------------------------
+newgrid <- CJ(habitat_corrected = unique(data$habitat_corrected)) 
+  pred1 <- rma_predictions(m, newgrid)
+    # add significance direction 
+    pred1[ci.lb > 0 & pred > 0, sig := "Positive effect"]
+    pred1[ci.ub < 0 & pred < 0, sig := "Negative effect"]
+    pred1[ci.ub > 0 & ci.lb < 0, sig := "Non-significant"]
+
+# create data table for sample sizes (for categorical moderators only)
+sample_sizes <- data %>% group_by(habitat_corrected, article_ID) %>% 
+                              summarize(ns = n()) %>% group_by(habitat_corrected) %>% 
+                                summarize(nr_articles = n(), nr_studies = sum(ns)) %>% 
+                  # create a variable with nr of articles and studies for plotting
+                  mutate(sample_size = paste(nr_articles, "(", nr_studies, ")", sep=""))
+# plot the figure
+habitat_richness <- ggplot() +
+              geom_jitter(data = subset(data, abs(yi_smd) < 20), # this is all data
+                          aes(x = factor(habitat_corrected, levels = c("barren", "erect-shrub tundra (shrubs >40 cm)", 
+                                                                "graminoid tundra", "prostrate-shrub tundra (shrubs <40 cm)", "wetland")),  
+                              y = yi_smd, size = 1/vi_smd, fill = yi_smd), 
+                          shape = 21, colour= "lightgrey", stroke = 0, width = 0.1, alpha = 0.9) +
+              scale_fill_gradient2(name = "effect size",
+                                   low = "#006699FF", mid = "#B3B8B3FF", high = "#B35900FF",
+                  midpoint = 0, space = "Lab") +
+              geom_hline(yintercept = 0, linetype = "dashed") +
+              # add the model results
+              new_scale_fill() +
+              # add prediction intervals
+              geom_linerange(data = pred1, aes(y = pred, ymin = pi.lb, ymax = pi.ub, 
+                                               x = habitat_corrected)) +
+              # add predicted effect sizes and confidence intervals
+              geom_pointrange(data = pred1, aes(y = pred, ymin = ci.lb, ymax = ci.ub, 
+                                                x = habitat_corrected, fill = sig),
+                              shape = 21, size = 1, linewidth = 1.2, stroke = 0.5) +
+              scale_fill_manual(NULL, values = c("Negative effect" = "#006699FF", 
+                                           "Non-significant" = "#B3B8B3FF",
+                                           "Positive effect" = "#B35900FF")) +
+              labs(title = "Plant species richness", x = "Habitat type", 
+                   y = "Effect size (Hedges g)", fill = "Effect size") +
+              ylim(-6, 6) +
+              guides(size = FALSE) +
+              geom_text(data = sample_sizes, # indicate number of articles(studies)
+                        aes(x = habitat_corrected, y = -6, label = sample_size),
+                        size = 3, color = "grey10") +
+              theme_systrev() + 
+                theme(legend.position = "none") 
+print(habitat_richness) # print plot to screen
   
 
 ## 3.12 plant structure ----------------------------------------------------------

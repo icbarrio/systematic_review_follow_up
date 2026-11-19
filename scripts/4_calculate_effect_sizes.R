@@ -25,7 +25,7 @@ rm(list=ls())
 setwd("./data")
 
 # load the dataset
-dt <- fread("coded_data.csv")
+dt <- fread("data/coded_data_old_FIXED.csv")
 
 
 ## build scratch file ----------------------------------------
@@ -67,7 +67,7 @@ scratch <- dt  %>%
          L_upper = as.numeric(L_upper)) 
 summary(scratch) # scratch contains all observations
 
-scratch %>% distinct(article_ID) # 201 articles
+scratch %>% distinct(article_ID) # 201 articles (200 articles in the fixed version)
 
 # some checks: do we have studies with SD or SE with a sample size of 1?
 scratch %>% filter(variability_type == "SD" | variability_type == "SE") %>% 
@@ -90,12 +90,12 @@ scratch <- scratch %>%
             mutate(error_type = case_when(variability_type %in% c("SE", "SD") ~ "reported",
                                           TRUE ~ variability_type))
 
-  simple <- scratch[variability_type %in% c("SE", "SD")]           # 2725 studies
-  CIs <- scratch[variability_type == "CI", ]                       # 178 studies
-  IQRs <- scratch[variability_type == "IQR", ]                     # 255 studies
-  range <- scratch[variability_type == "range", ]                  # 11 studies
-  no.variability <- scratch %>% filter(is.na(variability_type))    # 544 studies
-      no.variability %>% group_by(outcome_type) %>% summarize(n = n())
+  simple <- scratch |> filter(variability_type %in% c("SE", "SD"))           # 2725 studies (now 2707)
+  CIs <- scratch |> filter(variability_type == "CI")                       # 178 studies
+  IQRs <- scratch |> filter(variability_type == "IQR")                     # 255 studies (254)
+  range <- scratch |> filter(variability_type == "range")                  # 11 studies
+  no.variability <- scratch |> filter(is.na(variability_type))    # 544 studies
+      no.variability |> group_by(outcome_type) |> summarize(n = n())
       # from these there are 177 reporting effect sizes and 17 reporting outcomes of statistical tests
       # and 350 reporting raw values -- let's check these
             no.variability %>% filter(outcome_type == "raw_value") %>% 
@@ -104,11 +104,12 @@ scratch <- scratch %>%
             # 62 studies report only one value ("total") for high and one for low diversity
             # with no associated variability measure
       # create separate subsets for using later
-      no.and.mean <- no.variability[value_type %in% c("mean", "total")] # 350 studies
-      no.no.mean <- no.variability[!value_type %in% c("mean", "total")] # 194 studies (these are the ones reporting results from 
+      no.and.mean <- no.variability |> filter(value_type %in% c("mean", "total")) # 350 studies
+      no.no.mean <- no.variability |> filter(!value_type %in% c("mean", "total")) # 194 studies (these are the ones reporting results from 
                                                                         # statistical tests or effect sizes)
 
       # add columns to merge later
+      setDT(no.and.mean) # make sure the object is data.table
       no.and.mean[, error_type := "estimated"] # call this "estimated" if doing imputations (see section 2)
         no.and.mean[, `:=` (Mean_High_Diversity = value_higher_diversity,
                             Mean_Low_Diversity = value_lower_diversity)]
@@ -129,10 +130,11 @@ length(scratch$study_ID) - (length(simple$study_ID) + length(CIs$study_ID) +
 # variability of 0?
 simple %>% filter(variability_higher_diversity == 0 | variability_lower_diversity == 0) %>% 
     distinct(study_ID) 
-    # 82 studies report variability of zero (these were double-checked and actually reported 0)
+    # 82 (79) studies report variability of zero (these were double-checked and actually reported 0)
 
 # for each study we need mean and SD; for studies that report these values directly, 
 # we store them in new columns that we will use in the meta-analyses
+setDT(simple)
 simple[value_type == "mean", 
        `:=` (Mean_High_Diversity = value_higher_diversity,
              Mean_Low_Diversity = value_lower_diversity) ]
@@ -141,7 +143,7 @@ simple[variability_type == "SD",
              SD_Low_Diversity = variability_lower_diversity)]
 
 # for studies reporting mean and SE we need to convert SE to SD
-simple %>% group_by(variability_type) %>% summarize(n = n()) # 2109 studies
+simple %>% group_by(variability_type) %>% summarize(n = n()) # 2109 studies (2099)
 
 simple[variability_type == "SE", 
        `:=` (SD_High_Diversity = variability_higher_diversity * sqrt(sample_size_higher_diversity),
@@ -158,6 +160,7 @@ simple <- simple %>% mutate(error_type = ifelse(is.na(simple$SD_Low_Diversity) |
 # we will use the package estmeansd to estimate mean and SD from medians and IQRs
 # this is controversial because it only works for ca normally distributed data
 # so we will check later if this transformation affects the results
+setDT(IQRs)
 out <- c()
     for(i in 1:nrow(IQRs)){
       out <- qe.mean.sd(q1.val = IQRs$H_lower[i],
@@ -186,7 +189,7 @@ summary(IQRs)
 # sqrt(n) * (upper limit - lower limit) / qt(1-0.05/2, df = n-1) 
 # https://handbook-5-1.cochrane.org/chapter_7/7_7_3_2_obtaining_standard_deviations_from_standard_errors_and.htm
 
-CIs <- CIs %>%
+CIs <- setDT(CIs) %>%
   mutate(HIGH_lower_CI = ifelse(is.na(variability_higher_diversity), H_lower,
                                  value_higher_diversity - variability_higher_diversity),
          HIGH_upper_CI = ifelse(is.na(variability_higher_diversity), H_upper,
@@ -210,7 +213,7 @@ summary(CIs)
 ### 1.4 studies reporting ranges -----------------------------------------------
 # SD can be estimated by quartering the range ( 1/4 * (Max − Min) )
 # see: https://environmentalevidencejournal.biomedcentral.com/articles/10.1186/s13750-023-00299-x
-range <- range %>%
+range <- setDT(range) %>%
   mutate(Mean_High_Diversity = case_when(value_type == "mean" ~ value_higher_diversity),
          Mean_Low_Diversity = case_when(value_type == "mean" ~ value_lower_diversity),
          SD_High_Diversity = 1/4*(H_upper - H_lower), 
@@ -281,7 +284,7 @@ imputed.dataset %>% group_by(error_type) %>% summarize(n = n())
 # paste everything together
 responses <- rbind(imputed.dataset, IQRs, range, fill = T)
 
-
+setDT(scratch)
 scratch[!study_ID %in% responses$study_ID] # 194 studies --> these are the ones 
                                            # reporting effect sizes or statistical tests
                                            # (the ones in no.no.mean)
@@ -303,7 +306,7 @@ responses.out <- escalc(measure = "SMD", # standardized mean difference (Hedges 
                         var.names=c("yi_smd","vi_smd"),
                         data = responses)
 responses.out %>% filter(is.na(yi_smd) | is.na(vi_smd)) %>% summarize(n = n())
-  # effect size cannot be calculated for 115 studies
+  # effect size cannot be calculated for 115 studies (113)
 
 # now we will calculate effect sizes from other sources: t-tests, one-way
 # ANOVAs and reported effect sizes
@@ -402,7 +405,7 @@ responses.out_es <- escalc(measure   = "SMD", # standardized mean difference (He
 responses.out <- rbind(responses.out, responses.out_t, responses.out_a, responses.out_es)
 
     # nr of studies with no effect size
-    responses.out %>% filter(is.na(yi_smd)) %>% summarize(n = n()) # 115 studies
+    responses.out %>% filter(is.na(yi_smd)) %>% summarize(n = n()) # 115 studies (113)
 
 # yi is the effect size and vi the corresponding variance 
 # (which will be used to weigh the data points in the meta-analyses)
@@ -421,10 +424,10 @@ no.eff.size <- responses.out %>% filter(is.na(vi_smd) | is.na(yi_smd)) %>%  # 11
 # for any of the treatments (high vs low), or for those where variability is missing
 
 no.eff.size %>% filter(sample_size_higher_diversity == 1 | sample_size_lower_diversity == 1) # 70 studies
-no.eff.size %>% filter(SD_High_Diversity == 0 | SD_Low_Diversity == 0) # 50 studies
+no.eff.size %>% filter(SD_High_Diversity == 0 | SD_Low_Diversity == 0) # 50 studies (45)
 no.eff.size %>% filter(is.na(SD_High_Diversity) | is.na(SD_Low_Diversity)) # 5 studies
 no.eff.size %>% filter(sample_size_higher_diversity == 1 | sample_size_lower_diversity == 1 | 
-                         SD_High_Diversity == 0 | SD_Low_Diversity == 0 | is.na(SD_High_Diversity) | is.na(SD_Low_Diversity)) # 115 studies
+                         SD_High_Diversity == 0 | SD_Low_Diversity == 0 | is.na(SD_High_Diversity) | is.na(SD_Low_Diversity)) # 115 studies (113)
 
 ## there are some extreme outliers, most of them estimated
 responses.out[yi_smd < quantile(responses.out$yi_smd, .005, na.rm = TRUE), ] # 18 outliers
@@ -449,7 +452,7 @@ dt.smd <- left_join(dt, effect.sizes, by = "study_ID") %>%
     "ash_content", "shoot_death", "shoot_dieback", "leaf_death", "dead_biomass"), -yi_smd, yi_smd))
   summary(dt.smd)
 
-fwrite(dt.smd, "effect_sizes/data_with_effect_sizes.csv")
+fwrite(dt.smd, "data/effect_sizes/data_with_effect_sizes.csv")
 
 
 
