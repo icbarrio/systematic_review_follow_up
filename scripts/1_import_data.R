@@ -141,12 +141,10 @@ coded_data_old_FIXED <- read_csv("data/old_database/coded_data_OLD.csv")
 ## fix the old database
 ## add exclosure size data to the old database
 # exclosure size has been manually checked for all studies included in the previous systematic review
-exclosure_size <- read_excel("data/exclosures_sysrev.xlsx", 
-                           sheet = "exclosures") |> 
+exclosure_size <- read_excel("data/new_database/exclosures_sysrev.xlsx", sheet = "exclosures") |> 
   select(article_ID, exclosure_size, exclosure_size_comments, exclosure_area)
 
-exclosure_size_ss <- read_excel("data/exclosures_sysrev.xlsx", 
-                           sheet = "size_selective") |> 
+exclosure_size_ss <- read_excel("data/new_database/exclosures_sysrev.xlsx", sheet = "size_selective") |> 
   select(article_ID, contrast, exclosure_size, exclosure_size_comments, exclosure_area)
 
 
