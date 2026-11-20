@@ -34,62 +34,64 @@ write_excel_csv(overview_old_FIXED, file = "data/overview_old_FIXED.csv", col_na
 
 ## 1.2 coded data ----
 # the old dataset is stored as a single csv file
-coded_data_old <- read_csv("data/old_database/coded_data_OLD.csv") 
+coded_data_old_FIXED <- read_csv("data/old_database/coded_data_OLD.csv") 
 
-## output data for manual check - DO NOT NEED TO RUN EVERY TIME
-# for the more recent studies we have included information on exclosure size, 
-# so we need to add this information to the old dataset --> we extract the studies
-# using exclosures/enclosures in the old dataset and fill out manually;
-# size-selective exclosures have to be treated differently
-    exclosure_studies <- coded_data_old |> 
-      filter(diversity_contrast %in% c("exclosure", "enclosure") &
-               size_selective_exclosures == "no") |> 
-        distinct(article_ID, .keep_all = TRUE) |> 
-      # keep only relevant variables
-      select("article_ID", "author_list", "title", "year", "journal",
-             "diversity_contrast", "diversity_contrast_comments")
-    
-    size_selective_studies <- coded_data_old |> 
-      filter(size_selective_exclosures == "yes") |> 
-      distinct(article_ID, contrast, .keep_all = TRUE) |> 
-      # keep only relevant variables
-      select("article_ID", "study_ID", "author_list", "title", "year", "journal",
-             "contrast", "diversity_contrast_comments")
-    
-    write_xlsx(list(exclosures = exclosure_studies,
-                    size_selective = size_selective_studies),
-                "data/exclosures_sysrev.xlsx")
+# ## output data for manual check - DO NOT NEED TO RUN EVERY TIME
+# coded_data_old <- read_csv("data/old_database/coded_data_OLD.csv") 
+# # for the more recent studies we have included information on exclosure size, 
+# # so we need to add this information to the old dataset --> we extract the studies
+# # using exclosures/enclosures in the old dataset and fill out manually;
+# # size-selective exclosures have to be treated differently
+#     exclosure_studies <- coded_data_old |> 
+#       filter(diversity_contrast == "exclosure" &
+#                size_selective_exclosures == "no") |> 
+#         distinct(article_ID, .keep_all = TRUE) |> 
+#       # keep only relevant variables
+#       select("article_ID", "author_list", "title", "year", "journal",
+#              "diversity_contrast", "diversity_contrast_comments")
+#     
+#     size_selective_studies <- coded_data_old |> 
+#       filter(size_selective_exclosures == "yes") |> 
+#       distinct(article_ID, contrast, .keep_all = TRUE) |> 
+#       # keep only relevant variables
+#       select("article_ID", "study_ID", "author_list", "title", "year", "journal",
+#              "contrast", "diversity_contrast_comments")
+#     
+#     write_xlsx(list(exclosures = exclosure_studies,
+#                     size_selective = size_selective_studies),
+#                 "data/exclosures_sysrev.xlsx")
+# 
+# # we also need to check the classification of the habitats in the old dataset
+# # as some spot checks during data extraction have pointed out some inconsistencies
+# coded_data_old |> distinct(habitat_type)
+# # we have 7 possible habitat classes; we extract each class in a separate tab 
+# # in an Excel file. We create a function to filter by habitat and keep only relevant cols 
+# split_by_habitat <- function(coded_data_old, habitat_class){
+#   coded_data_old |> filter(habitat_type == habitat_class) |> 
+#     distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
+#   # keep only relevant variables
+#   select("article_ID", "author_list", "title", "year", "journal",
+#          "habitat_type", "habitat_type_D", "habitat_type_comments", "soil_moisture")
+# }
+# 
+# other_studies <- split_by_habitat(coded_data_old, "other")
+# erect_shrub_studies <- split_by_habitat(coded_data_old, "erect-shrub tundra (shrubs >40 cm)")
+# prostrate_shrub_studies <- split_by_habitat(coded_data_old, "prostrate-shrub tundra (shrubs <40 cm)")
+# no_habitat_studies <- split_by_habitat(coded_data_old, "not reported")
+# wetland_studies <- split_by_habitat(coded_data_old, "wetland")
+# graminoid_studies <- split_by_habitat(coded_data_old, "graminoid tundra")
+# barren_studies <- split_by_habitat(coded_data_old, "barren")
+# 
+# # write out Excel file for checks
+# write_xlsx(list(other = other_studies,
+#                 wetland = wetland_studies,
+#                 graminoid = graminoid_studies,
+#                 no_habitat = no_habitat_studies,
+#                 erect_shrub = erect_shrub_studies,
+#                 prostrate_srub = prostrate_shrub_studies,
+#                 barren = barren_studies),
+#             "data/habitat_sysrev.xlsx")
 
-# we also need to check the classification of the habitats in the old dataset
-# as some spot checks during data extraction have pointed out some inconsistencies
-coded_data_old |> distinct(habitat_type)
-# we have 7 possible habitat classes; we extract each class in a separate tab 
-# in an Excel file. We create a function to filter by habitat and keep only relevant cols 
-split_by_habitat <- function(coded_data_old, habitat_class){
-  coded_data_old |> filter(habitat_type == habitat_class) |> 
-    distinct(article_ID, habitat_type_comments, .keep_all = TRUE) |> 
-  # keep only relevant variables
-  select("article_ID", "author_list", "title", "year", "journal",
-         "habitat_type", "habitat_type_D", "habitat_type_comments", "soil_moisture")
-}
-
-other_studies <- split_by_habitat(coded_data_old, "other")
-erect_shrub_studies <- split_by_habitat(coded_data_old, "erect-shrub tundra (shrubs >40 cm)")
-prostrate_shrub_studies <- split_by_habitat(coded_data_old, "prostrate-shrub tundra (shrubs <40 cm)")
-no_habitat_studies <- split_by_habitat(coded_data_old, "not reported")
-wetland_studies <- split_by_habitat(coded_data_old, "wetland")
-graminoid_studies <- split_by_habitat(coded_data_old, "graminoid tundra")
-barren_studies <- split_by_habitat(coded_data_old, "barren")
-
-# write out Excel file for checks
-write_xlsx(list(other = other_studies,
-                wetland = wetland_studies,
-                graminoid = graminoid_studies,
-                no_habitat = no_habitat_studies,
-                erect_shrub = erect_shrub_studies,
-                prostrate_srub = prostrate_shrub_studies,
-                barren = barren_studies),
-            "data/habitat_sysrev.xlsx")
 
 ## fix the old database
 ## add exclosure size data to the old database
@@ -100,32 +102,26 @@ exclosure_size <- read_excel("data/exclosures_sysrev.xlsx",
 
 exclosure_size_ss <- read_excel("data/exclosures_sysrev.xlsx", 
                            sheet = "size_selective") |> 
-  select(study_ID, exclosure_size, exclosure_size_comments, exclosure_area)
+  select(article_ID, contrast, exclosure_size, exclosure_size_comments, exclosure_area)
 
 
-coded_data_old_FIXED <- coded_data_old |> 
-  ## add EXCLOSURE AREA information (extracted manually for all exclosure studies)
+coded_data_old_FIXED <- coded_data_old_FIXED |> 
+  ## add EXCLOSURE AREA information (extracted manually for all exclosure studies):
   # merge info on exclosure size
   left_join(exclosure_size, by = "article_ID") |> 
   # merge info on size of size selective exclosures
-  left_join(exclosure_size_ss, by = "study_ID") |> 
+  left_join(exclosure_size_ss, by = c("article_ID", "contrast")) |> 
   # merge columns with exclosure size info and remove the original ones
     mutate(exclosure_size = coalesce(exclosure_size.x, as.character(exclosure_size.y)),
            exclosure_size_comments = coalesce(exclosure_size_comments.x, exclosure_size_comments.y),
            exclosure_area = coalesce(exclosure_area.x, as.character(exclosure_area.y))) |> 
     select(-ends_with(".x"), -ends_with(".y")) |> 
-  # recalculate exclosure area based on lengthxwidth or diameter
-  mutate(exclosure_size = na_if(exclosure_size, "not reported"),
-         exclosure_size = str_to_lower(exclosure_size),
-         exclosure_size = str_replace_all(exclosure_size, "×", "x"),
-         exclosure_size = case_when(exclosure_size == "0.5x05" ~ "0.5x0.5", 
-                                    TRUE ~ exclosure_size),
-         exclosure_size = str_remove(exclosure_size, ";.*"), # keep only smallest value for those reporting two
-         exclosure_area = case_when(exclosure_size_comments == "lengthxwidth" ~ 
-                                          as.numeric(str_extract(exclosure_size, "^[0-9.]+")) *
-                                          as.numeric(str_extract(exclosure_size, "(?<=x)[0-9.]+")),
-                                    exclosure_size_comments == "diameter" ~ pi * (as.numeric(str_extract(exclosure_size, "^[0-9.]+$")) / 2)^2,
-                                          TRUE ~ NA_real_)) |> 
+  # make sure exclosure_area is numerical
+  mutate(exclosure_area = na_if(exclosure_area, "not reported"),
+         # keep only smallest value for those reporting two values
+         exclosure_area = str_remove(exclosure_area, ";.*"),
+         exclosure_area = as.numeric(exclosure_area)) |> 
+  
   ## fix issues with HABITAT TYPES
   # drop studies conducted in forest
       filter(!(article_ID == 15 & habitat_type == "other")) |> 
@@ -198,10 +194,10 @@ write_excel_csv(coded_data_old_FIXED, file = "data/coded_data_old_FIXED.csv", co
 
 ## 2.1 overview dataset --------------------------------------------------------
 ##### TO BE UPDATED: for now this is a temporary copy of the working file
-overview_new <- read_excel("data/updated_lit_search_and_full_article_list.xlsx", 
+overview_new <- read_excel("data/updated_lit_search_and_full_article_list_2011.xlsx", 
                            sheet = "screening") 
   # there are some warning messages when importing the dataset but it seems fine
-write_excel_csv(overview_new, file = "data/new_database/overview_NEW.csv", col_names = TRUE)
+write_excel_csv(overview_new, file = "data/new_database/overview_new.csv", col_names = TRUE)
 
 
 
@@ -213,10 +209,10 @@ write_excel_csv(overview_new, file = "data/new_database/overview_NEW.csv", col_n
 # load and rearrange the raw data first
 # this takes a while from the excel file, so we will save it later as csv
 # so that it is faster to load
-raw.file   <- read_excel("data/coding_template_khb.xlsx", sheet = "CODING_template") |> 
+raw.file   <- read_excel("data/coding_template_khb_1911.xlsx", sheet = "CODING_template") |> 
                 # remove columns that we do not need
                 select (-"Topic", -"Variable description", -"Type", -"Source") 
-raw.file_icb <- read_excel("data/coding_template_khb.xlsx", sheet = "CODING_template") |> 
+raw.file_icb <- read_excel("data/coding_template_icb_1911.xlsx", sheet = "CODING_template") |> 
                 # remove columns that we do not need
                 select (-"Topic", -"Variable description", -"Type", -"Source") 
 raw.file <- raw.file |> left_join(raw.file_icb, by = "Coding variable")
@@ -226,7 +222,7 @@ raw.file_t = as_tibble(t(raw.file), rownames = "row_names")
   raw.file_t[, 1] <- raw.file_t[, 8]       # study_ID as first column
   colnames(raw.file_t) <- raw.file_t[1,]  # our variable names are in the first row
   raw.file_t <- raw.file_t[-1,-8]         # remove first row and repeated column (study_ID)
-  # ICB: file should contain 2246 obs of 82 variables
+  # ICB: file should contain 1220 obs of 82 variables
 
 write_excel_csv(raw.file_t, file = "data/new_database/raw.file_t.csv", col_names = TRUE)
 
@@ -245,7 +241,7 @@ write_excel_csv(raw.file_t, file = "data/new_database/raw.file_t.csv", col_names
                       select(study_ID, measured_response_variable, 
                              measured_response_comments, reported_units)
     # save output as csv
-    write_excel_csv(response_var, "response_var.csv", col_names=TRUE)
+    write_excel_csv(response_var, "data/response_var.csv", col_names=TRUE)
     
     ## herbivore data
     # we want to get a list of unique values of herbivore names so that we can
@@ -279,6 +275,10 @@ write_excel_csv(raw.file_t, file = "data/new_database/raw.file_t.csv", col_names
 # these lists with the new values were then saved as separate tabs in the CODING_database.xlsx file
     
 ### 1.2.2 clean and rearrange dataset ------------------------------------------
+coded_data_NEW <- raw.file_t |> 
+      filter(study_ID == 7012)
+                    
+    
 # RUN FROM HERE
 # load values of measured outcome variables and grouping into broader categories
 outcome_variables <- read_excel("CODING_database.xlsx", sheet = "outcomes") %>% 
@@ -500,7 +500,47 @@ coded_data <- raw.file_t %>%
                        "outcome_type", "value_higher_diversity":"editing_person")
 
 # save output as csv
-write_excel_csv(coded_data, file = "coded_data.csv", col_names=TRUE)
+write_excel_csv(coded_data, file = "data/coded_data.csv", col_names=TRUE)
+
+
+
+# 3. combine datasets ----------------------------------------------------------
+## 3.1 overview dataset ----
+overview <- overview_new |> 
+  # for full text we need detailed reason for exclusion
+  mutate(full_text_score = exclusion_score_full_text,
+         database = "new") |> 
+  # merge old database
+  bind_rows(overview_old_FIXED |> 
+              select(any_of(names(overview_new))) |> # keep only vars in overview_new
+              mutate(volume = as.character(volume))) |> 
+  mutate(database = case_when(is.na(database) ~ "old",
+                              TRUE ~ database)) |> 
+  # there are some articles duplicated in the combined database because we checked
+  # some of the articles excluded at text stage in the old database (7). Need to 
+  # update full_text_score in the old records with the new assessment. 
+  # I will do this manually...
+  mutate(person_full_text = case_when(database == "old" & ID %in% c(95, 206, 438, 616, 528, 510, 129) ~ "KHB",
+                                        TRUE ~ person_full_text),
+         full_text_score = case_when(database == "old" & ID %in% c(95, 206, 438, 510, 129) ~ "include",
+                                     database == "old" & ID == 616 ~ "exclude_comparator",
+                                     database == "old" & ID == 528 ~ "exclude_population_habitat",
+                                      TRUE ~ full_text_score),
+         coded_person = case_when(database == "old" & ID %in% c(95, 206, 438, 510, 129) ~ "KHB",
+                                  database == "old" & ID %in% c(616, 528) ~ NA_character_,
+                                      TRUE ~ coded_person),
+         data_coded = case_when(database == "old" & ID %in% c(95, 206, 438, 510, 129) ~ "yes",
+                                database == "old" & ID %in% c(616, 528) ~ NA_character_,
+                                      TRUE ~ data_coded)) |> 
+  filter(!(database == "old" & ID %in% c(95, 206, 438, 616, 528, 510, 129))) |> 
+  arrange(ID)
+         
+# save output as csv
+write_excel_csv(overview, file = "data/overview.csv", col_names=TRUE)
+
+
+
+
 
 
 
