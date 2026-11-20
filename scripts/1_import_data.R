@@ -67,7 +67,7 @@ overview <- overview_new |>
          data_coded = case_when(database == "old" & ID %in% c(95, 206, 438, 510, 129) ~ "yes",
                                 database == "old" & ID %in% c(616, 528) ~ NA_character_,
                                       TRUE ~ data_coded)) |> 
-  filter(!(database == "old" & ID %in% c(95, 206, 438, 616, 528, 510, 129))) |> 
+  filter(!(database == "new" & ID %in% c(95, 206, 438, 616, 528, 510, 129))) |> 
   arrange(ID)
          
 # save output as csv
