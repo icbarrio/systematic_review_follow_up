@@ -12,6 +12,11 @@
 # and import, clean and rearrange the updated search. At the end we compile
 # both datasets and save the output as csv.
 
+# we have two main databases related to the systematic review: 
+# 1) overview datasets: contain bibliographic information 
+#    about the articles and the screening process --> [Additional file 2]
+# 2) coded data: contains coded raw data extracted from studies --> [Additional file 3]
+
 
 # libraries --------------------------------------------------------------------
 library(readxl)
@@ -21,18 +26,58 @@ library(stringr)
 library(writexl)      # write out Excel files for checks
 
 
-# 1. load and fix old dataset --------------------------------------------------
-## 1.1 overview dataset ----
-# contains bibliographic information for the earlier search that we need to update 
+# 1. overview dataset ----------------------------------------------------------
+## 1.1 old dataset----
+# we need to load and update
 overview_old_FIXED <- read_csv("data/old_database/overview_OLD.csv") |> 
   # fix full text score for article_ID 1074 (should be excluded because it is forest)
   mutate(full_text_score = case_when(ID == 1074 ~ "exclude_population_habitat",
                                       TRUE ~ full_text_score))
 
-write_excel_csv(overview_old_FIXED, file = "data/overview_old_FIXED.csv", col_names = TRUE)
+## 1.2 new dataset ----
+##### TO BE UPDATED: for now this is a temporary copy of the working file
+overview_new <- read_excel("data/updated_lit_search_and_full_article_list_2011.xlsx", 
+                           sheet = "screening") 
+  # there are some warning messages when importing the dataset but it seems fine
+
+## 1.3 combined dataset ----
+overview <- overview_new |> 
+  # for full text we need detailed reason for exclusion
+  mutate(full_text_score = exclusion_score_full_text,
+         database = "new") |> 
+  # merge old database
+  bind_rows(overview_old_FIXED |> 
+              select(any_of(names(overview_new))) |> # keep only vars in overview_new
+              mutate(volume = as.character(volume))) |> 
+  mutate(database = case_when(is.na(database) ~ "old",
+                              TRUE ~ database)) |> 
+  # there are some articles duplicated in the combined database because we checked
+  # some of the articles excluded at text stage in the old database (7). Need to 
+  # update full_text_score in the old records with the new assessment. 
+  # I will do this manually...
+  mutate(person_full_text = case_when(database == "old" & ID %in% c(95, 206, 438, 616, 528, 510, 129) ~ "KHB",
+                                        TRUE ~ person_full_text),
+         full_text_score = case_when(database == "old" & ID %in% c(95, 206, 438, 510, 129) ~ "include",
+                                     database == "old" & ID == 616 ~ "exclude_comparator",
+                                     database == "old" & ID == 528 ~ "exclude_population_habitat",
+                                      TRUE ~ full_text_score),
+         coded_person = case_when(database == "old" & ID %in% c(95, 206, 438, 510, 129) ~ "KHB",
+                                  database == "old" & ID %in% c(616, 528) ~ NA_character_,
+                                      TRUE ~ coded_person),
+         data_coded = case_when(database == "old" & ID %in% c(95, 206, 438, 510, 129) ~ "yes",
+                                database == "old" & ID %in% c(616, 528) ~ NA_character_,
+                                      TRUE ~ data_coded)) |> 
+  filter(!(database == "old" & ID %in% c(95, 206, 438, 616, 528, 510, 129))) |> 
+  arrange(ID)
+         
+# save output as csv
+write_excel_csv(overview, file = "data/overview.csv", col_names=TRUE)
 
 
-## 1.2 coded data ----
+
+
+# 2. coded data ----------------------------------------------------------------
+## 2.1 old dataset ----
 # the old dataset is stored as a single csv file
 coded_data_old_FIXED <- read_csv("data/old_database/coded_data_OLD.csv") 
 
@@ -182,27 +227,7 @@ coded_data_old_FIXED <- coded_data_old_FIXED |>
 write_excel_csv(coded_data_old_FIXED, file = "data/coded_data_old_FIXED.csv", col_names = TRUE)
 
 
-
-
-# 2. load new dataset ----------------------------------------------------------
-# as for the older database we have two main databases 
-# related to the systematic review: 
-# 1) database in [Additional file 2]: contains bibliographic information 
-#    about the articles and the screening process --> overview_new
-# 2) database in [Additional file 3]: contains coded raw data extracted from 
-#    studies --> coded_data_new
-
-## 2.1 overview dataset --------------------------------------------------------
-##### TO BE UPDATED: for now this is a temporary copy of the working file
-overview_new <- read_excel("data/updated_lit_search_and_full_article_list_2011.xlsx", 
-                           sheet = "screening") 
-  # there are some warning messages when importing the dataset but it seems fine
-write_excel_csv(overview_new, file = "data/new_database/overview_new.csv", col_names = TRUE)
-
-
-
-
-## 2.2 coded data --------------------------------------------------------------
+## 2.2 new dataset ----
 
 ##### TO BE UPDATED: code below is from the original systematic review :)
 
@@ -504,40 +529,7 @@ write_excel_csv(coded_data, file = "data/coded_data.csv", col_names=TRUE)
 
 
 
-# 3. combine datasets ----------------------------------------------------------
-## 3.1 overview dataset ----
-overview <- overview_new |> 
-  # for full text we need detailed reason for exclusion
-  mutate(full_text_score = exclusion_score_full_text,
-         database = "new") |> 
-  # merge old database
-  bind_rows(overview_old_FIXED |> 
-              select(any_of(names(overview_new))) |> # keep only vars in overview_new
-              mutate(volume = as.character(volume))) |> 
-  mutate(database = case_when(is.na(database) ~ "old",
-                              TRUE ~ database)) |> 
-  # there are some articles duplicated in the combined database because we checked
-  # some of the articles excluded at text stage in the old database (7). Need to 
-  # update full_text_score in the old records with the new assessment. 
-  # I will do this manually...
-  mutate(person_full_text = case_when(database == "old" & ID %in% c(95, 206, 438, 616, 528, 510, 129) ~ "KHB",
-                                        TRUE ~ person_full_text),
-         full_text_score = case_when(database == "old" & ID %in% c(95, 206, 438, 510, 129) ~ "include",
-                                     database == "old" & ID == 616 ~ "exclude_comparator",
-                                     database == "old" & ID == 528 ~ "exclude_population_habitat",
-                                      TRUE ~ full_text_score),
-         coded_person = case_when(database == "old" & ID %in% c(95, 206, 438, 510, 129) ~ "KHB",
-                                  database == "old" & ID %in% c(616, 528) ~ NA_character_,
-                                      TRUE ~ coded_person),
-         data_coded = case_when(database == "old" & ID %in% c(95, 206, 438, 510, 129) ~ "yes",
-                                database == "old" & ID %in% c(616, 528) ~ NA_character_,
-                                      TRUE ~ data_coded)) |> 
-  filter(!(database == "old" & ID %in% c(95, 206, 438, 616, 528, 510, 129))) |> 
-  arrange(ID)
-         
-# save output as csv
-write_excel_csv(overview, file = "data/overview.csv", col_names=TRUE)
-
+## 2.3 combined dataset ----
 
 
 
