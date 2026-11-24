@@ -50,7 +50,10 @@ rm(list=ls())
 # contains coded raw data extracted from studies, as well as the lists of
 # herbivores, herbivore groups and plants (from script 1)
 
-coded_data <- read_csv("data/coded_data.csv") 
+coded_data <- read_csv("data/coded_data_ALL.csv") 
+
+# these are from script 1 and we will need these to build tables below, 
+# but we will need to make the datasets for the whole database (old + new)...
 herbivore_groups <- read_csv("data/herbivore_groups.csv") 
 new_values_herbivores <- read_csv("data/new_values_herbivores.csv") 
 new_values_plants <- read_csv("data/new_values_plants.csv") 
